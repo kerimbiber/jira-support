@@ -363,6 +363,9 @@
             <a href="{{ url_for('notes_list') }}" class="nav-link {% if request.endpoint in ['notes_list','note_detail','note_new','note_edit'] %}active{% endif %}">
                 <span class="nav-icon">📝</span> Notlar &amp; Dökümanlar
             </a>
+            <a href="{{ url_for('links_list') }}" class="nav-link {% if request.endpoint in ['links_list','link_new','link_edit'] %}active{% endif %}">
+                <span class="nav-icon">🔗</span> Linkler
+            </a>
             <a href="{{ url_for('notes_list', category='Prosedür') }}" class="nav-link">
                 <span class="nav-icon">📋</span> Prosedürler
             </a>

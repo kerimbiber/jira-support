@@ -39,6 +39,17 @@ def init_db():
             updated_at TEXT NOT NULL
         )
     ''')
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS links (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            url TEXT NOT NULL,
+            description TEXT NOT NULL DEFAULT '',
+            category TEXT NOT NULL DEFAULT 'Genel',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+    ''')
     conn.commit()
     conn.close()
 
@@ -320,6 +331,112 @@ def note_delete(note_id):
     conn.close()
     flash('Not silindi.', 'success')
     return redirect(url_for('notes_list'))
+
+
+LINK_CATEGORIES = ['Genel', 'Swagger', 'Panel', 'Dashboard', 'API', 'Araç', 'Döküman', 'Diğer']
+
+
+@app.route('/links')
+def links_list():
+    search = request.args.get('q', '').strip()
+    category = request.args.get('category', '').strip()
+
+    conn = get_db()
+    params = []
+    where = "WHERE 1=1"
+    if search:
+        where += " AND (title LIKE ? OR description LIKE ? OR url LIKE ?)"
+        params += [f'%{search}%', f'%{search}%', f'%{search}%']
+    if category:
+        where += " AND category = ?"
+        params.append(category)
+
+    total = conn.execute(f"SELECT COUNT(*) FROM links {where}", params).fetchone()[0]
+    links = conn.execute(
+        f"SELECT * FROM links {where} ORDER BY category ASC, title ASC",
+        params
+    ).fetchall()
+    conn.close()
+
+    return render_template(
+        'links.html',
+        links=links,
+        search=search,
+        category=category,
+        categories=LINK_CATEGORIES,
+        total=total,
+    )
+
+
+@app.route('/links/new', methods=['GET', 'POST'])
+def link_new():
+    if request.method == 'POST':
+        title = request.form.get('title', '').strip()
+        url = request.form.get('url', '').strip()
+        description = request.form.get('description', '').strip()
+        category = request.form.get('category', 'Genel').strip()
+        if not title or not url:
+            flash('Başlık ve URL zorunludur.', 'error')
+            return render_template('link_form.html', categories=LINK_CATEGORIES,
+                                   link=None, title=title, url=url,
+                                   description=description, category=category)
+        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        conn = get_db()
+        conn.execute(
+            "INSERT INTO links (title, url, description, category, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+            (title, url, description, category, now, now)
+        )
+        conn.commit()
+        conn.close()
+        flash('Link başarıyla eklendi.', 'success')
+        return redirect(url_for('links_list'))
+    return render_template('link_form.html', categories=LINK_CATEGORIES, link=None,
+                           title='', url='', description='', category='Genel')
+
+
+@app.route('/links/<int:link_id>/edit', methods=['GET', 'POST'])
+def link_edit(link_id):
+    conn = get_db()
+    link = conn.execute("SELECT * FROM links WHERE id = ?", (link_id,)).fetchone()
+    conn.close()
+    if link is None:
+        flash('Link bulunamadı.', 'error')
+        return redirect(url_for('links_list'))
+
+    if request.method == 'POST':
+        title = request.form.get('title', '').strip()
+        url = request.form.get('url', '').strip()
+        description = request.form.get('description', '').strip()
+        category = request.form.get('category', 'Genel').strip()
+        if not title or not url:
+            flash('Başlık ve URL zorunludur.', 'error')
+            return render_template('link_form.html', categories=LINK_CATEGORIES,
+                                   link=link, title=title, url=url,
+                                   description=description, category=category)
+        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        conn = get_db()
+        conn.execute(
+            "UPDATE links SET title=?, url=?, description=?, category=?, updated_at=? WHERE id=?",
+            (title, url, description, category, now, link_id)
+        )
+        conn.commit()
+        conn.close()
+        flash('Link başarıyla güncellendi.', 'success')
+        return redirect(url_for('links_list'))
+
+    return render_template('link_form.html', categories=LINK_CATEGORIES, link=link,
+                           title=link['title'], url=link['url'],
+                           description=link['description'], category=link['category'])
+
+
+@app.route('/links/<int:link_id>/delete', methods=['POST'])
+def link_delete(link_id):
+    conn = get_db()
+    conn.execute("DELETE FROM links WHERE id = ?", (link_id,))
+    conn.commit()
+    conn.close()
+    flash('Link silindi.', 'success')
+    return redirect(url_for('links_list'))
 
 
 if __name__ == '__main__':
