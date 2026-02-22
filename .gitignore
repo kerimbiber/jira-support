@@ -13,6 +13,9 @@ ENV/
 instance/
 .webassets-cache
 
+# Database (runtime data)
+notes.db
+
 # Uploads
 uploads/
 *.xlsx
