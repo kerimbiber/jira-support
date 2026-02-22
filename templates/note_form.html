@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}{% if note %}Notu Düzenle{% else %}Yeni Not{% endif %} – Support Hub{% endblock %}
+{% block page_title %}{% if note %}✏️ Notu Düzenle{% else %}➕ Yeni Not{% endif %}{% endblock %}
+
+{% block topbar_actions %}
+    <a href="{{ url_for('notes_list') }}" class="btn btn-secondary">← Notlara Dön</a>
+{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .form-card {
+        max-width: 760px;
+        background: var(--white);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 32px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    .form-row { display: grid; grid-template-columns: 1fr auto; gap: 14px; align-items: start; }
+
+    .char-count { font-size: 11px; color: var(--text-secondary); margin-top: 4px; text-align: right; }
+
+    .form-actions {
+        display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px;
+        padding-top: 20px; border-top: 1px solid var(--border);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-card">
+    <form method="post"
+          action="{% if note %}{{ url_for('note_edit', note_id=note['id']) }}{% else %}{{ url_for('note_new') }}{% endif %}">
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="title">Başlık <span style="color:var(--error)">*</span></label>
+                <input type="text" id="title" name="title" class="form-control"
+                       placeholder="Not başlığı…" value="{{ title }}" required maxlength="200">
+            </div>
+            <div class="form-group" style="min-width:160px;">
+                <label for="category">Kategori</label>
+                <select id="category" name="category" class="form-control">
+                    {% for cat in categories %}
+                        <option value="{{ cat }}" {% if category == cat %}selected{% endif %}>{{ cat }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="content">İçerik <span style="color:var(--error)">*</span></label>
+            <textarea id="content" name="content" class="form-control"
+                      placeholder="Not içeriğinizi buraya yazın…" required
+                      style="min-height:300px;">{{ content }}</textarea>
+            <p class="char-count"><span id="charCount">0</span> karakter</p>
+        </div>
+
+        <div class="form-actions">
+            <a href="{% if note %}{{ url_for('note_detail', note_id=note['id']) }}{% else %}{{ url_for('notes_list') }}{% endif %}"
+               class="btn btn-secondary">İptal</a>
+            <button type="submit" class="btn btn-primary">
+                {% if note %}💾 Güncelle{% else %}➕ Oluştur{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const contentArea = document.getElementById('content');
+    const charCount   = document.getElementById('charCount');
+
+    function updateCount() { charCount.textContent = contentArea.value.length; }
+    contentArea.addEventListener('input', updateCount);
+    updateCount();
+</script>
+{% endblock %}

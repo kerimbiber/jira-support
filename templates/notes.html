@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+
+{% block title %}Notlar &amp; Dökümanlar – Support Hub{% endblock %}
+{% block page_title %}📝 Notlar &amp; Dökümanlar{% endblock %}
+
+{% block topbar_actions %}
+    <a href="{{ url_for('note_new') }}" class="btn btn-primary">
+        <span>＋</span> Yeni Not
+    </a>
+{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .search-bar {
+        background: var(--white);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px 20px;
+        margin-bottom: 20px;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: flex-end;
+    }
+    .search-bar .form-group { margin-bottom: 0; flex: 1; min-width: 180px; }
+
+    .notes-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 16px;
+        margin-bottom: 28px;
+    }
+
+    .note-card {
+        background: var(--white);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 20px;
+        text-decoration: none;
+        display: block;
+        transition: box-shadow 0.2s, transform 0.18s, border-color 0.2s;
+        position: relative;
+        overflow: hidden;
+    }
+    .note-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, var(--primary), #a855f7);
+        border-radius: 3px 3px 0 0;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+    .note-card:hover {
+        box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+        transform: translateY(-2px);
+        border-color: var(--primary);
+    }
+    .note-card:hover::before { opacity: 1; }
+
+    .note-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 8px;
+        margin-bottom: 10px;
+    }
+
+    .note-title {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--text-primary);
+        line-height: 1.4;
+        flex: 1;
+    }
+
+    .note-preview {
+        color: var(--text-secondary);
+        font-size: 13px;
+        line-height: 1.6;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        margin-bottom: 14px;
+    }
+
+    .note-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 11.5px;
+        color: var(--text-secondary);
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 24px;
+        color: var(--text-secondary);
+    }
+    .empty-state .empty-icon { font-size: 52px; margin-bottom: 14px; }
+    .empty-state h3 { font-size: 17px; color: var(--text-primary); margin-bottom: 6px; }
+    .empty-state p { font-size: 13.5px; margin-bottom: 20px; }
+
+    .results-info {
+        font-size: 13px;
+        color: var(--text-secondary);
+        margin-bottom: 14px;
+    }
+
+    .category-tabs {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-bottom: 20px;
+    }
+    .category-tab {
+        padding: 5px 14px;
+        border-radius: 99px;
+        font-size: 12.5px;
+        font-weight: 500;
+        text-decoration: none;
+        border: 1px solid var(--border);
+        color: var(--text-secondary);
+        background: var(--white);
+        transition: background 0.18s, color 0.18s, border-color 0.18s;
+    }
+    .category-tab:hover, .category-tab.active {
+        background: var(--primary-light);
+        color: var(--primary-dark);
+        border-color: var(--primary);
+    }
+    .category-tab.active { font-weight: 600; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Search & filter -->
+<form method="get" action="{{ url_for('notes_list') }}" class="search-bar">
+    <div class="form-group">
+        <label for="q">Ara</label>
+        <input type="text" id="q" name="q" class="form-control" placeholder="Başlık veya içerik…" value="{{ search }}">
+    </div>
+    <div class="form-group" style="min-width:160px;">
+        <label for="category">Kategori</label>
+        <select id="category" name="category" class="form-control">
+            <option value="">Tümü</option>
+            {% for cat in categories %}
+                <option value="{{ cat }}" {% if category == cat %}selected{% endif %}>{{ cat }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <button type="submit" class="btn btn-primary" style="height:38px;align-self:flex-end;">🔍 Ara</button>
+    {% if search or category %}
+        <a href="{{ url_for('notes_list') }}" class="btn btn-secondary" style="height:38px;align-self:flex-end;">✕ Temizle</a>
+    {% endif %}
+</form>
+
+<!-- Quick category tabs -->
+<div class="category-tabs">
+    <a href="{{ url_for('notes_list', q=search) }}" class="category-tab {% if not category %}active{% endif %}">Tümü ({{ total }})</a>
+    {% for cat in categories %}
+        <a href="{{ url_for('notes_list', category=cat, q=search) }}"
+           class="category-tab {% if category == cat %}active{% endif %}">{{ cat }}</a>
+    {% endfor %}
+</div>
+
+{% if notes %}
+    <p class="results-info">
+        {% if search or category %}
+            "<strong>{% if search %}{{ search }}{% endif %}{% if category %} [{{ category }}]{% endif %}</strong>" için {{ total }} sonuç
+        {% else %}
+            Toplam {{ total }} not
+        {% endif %}
+        &nbsp;·&nbsp; Sayfa {{ page }} / {{ total_pages }}
+    </p>
+
+    <div class="notes-grid">
+        {% for note in notes %}
+        <a href="{{ url_for('note_detail', note_id=note['id']) }}" class="note-card">
+            <div class="note-card-header">
+                <span class="note-title">{{ note['title'] }}</span>
+                <span class="badge
+                    {% if note['category'] == 'Prosedür' %}badge-primary
+                    {% elif note['category'] == 'Hata/Bug' %}badge-error
+                    {% elif note['category'] == 'Döküman' %}badge-success
+                    {% elif note['category'] == 'İpucu' %}badge-warning
+                    {% else %}badge-gray{% endif %}">
+                    {{ note['category'] }}
+                </span>
+            </div>
+            <p class="note-preview">{{ note['content'] }}</p>
+            <div class="note-footer">
+                <span>📅 {{ note['updated_at'][:10] }}</span>
+                <span>Düzenlendi: {{ note['updated_at'][11:16] }}</span>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <div class="flex items-center justify-between flex-wrap gap-2 mt-2">
+        <nav class="pagination" aria-label="Sayfalama">
+            <a href="{{ url_for('notes_list', page=page-1, q=search, category=category) }}"
+               class="page-link page-link-wide {% if page <= 1 %}disabled{% endif %}">
+                ← Önceki
+            </a>
+
+            {% set start = [1, page - 2] | max %}
+            {% set end   = [total_pages, page + 2] | min %}
+
+            {% if start > 1 %}
+                <a href="{{ url_for('notes_list', page=1, q=search, category=category) }}" class="page-link">1</a>
+                {% if start > 2 %}<span class="page-link disabled">…</span>{% endif %}
+            {% endif %}
+
+            {% for p in range(start, end + 1) %}
+                <a href="{{ url_for('notes_list', page=p, q=search, category=category) }}"
+                   class="page-link {% if p == page %}active{% endif %}">{{ p }}</a>
+            {% endfor %}
+
+            {% if end < total_pages %}
+                {% if end < total_pages - 1 %}<span class="page-link disabled">…</span>{% endif %}
+                <a href="{{ url_for('notes_list', page=total_pages, q=search, category=category) }}" class="page-link">{{ total_pages }}</a>
+            {% endif %}
+
+            <a href="{{ url_for('notes_list', page=page+1, q=search, category=category) }}"
+               class="page-link page-link-wide {% if page >= total_pages %}disabled{% endif %}">
+                Sonraki →
+            </a>
+        </nav>
+        <span class="text-muted">{{ page }} / {{ total_pages }}</span>
+    </div>
+    {% endif %}
+
+{% else %}
+    <div class="empty-state">
+        <div class="empty-icon">📭</div>
+        {% if search or category %}
+            <h3>Sonuç bulunamadı</h3>
+            <p>Arama kriterlerinize uyan not bulunamadı.</p>
+            <a href="{{ url_for('notes_list') }}" class="btn btn-secondary">Tüm Notları Göster</a>
+        {% else %}
+            <h3>Henüz not yok</h3>
+            <p>İlk notunuzu oluşturmak için aşağıdaki butona tıklayın.</p>
+            <a href="{{ url_for('note_new') }}" class="btn btn-primary">＋ İlk Notu Oluştur</a>
+        {% endif %}
+    </div>
+{% endif %}
+{% endblock %}
