@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+
+{% block title %}Jira Ayarları – Destek Merkezi{% endblock %}
+{% block page_title %}⚙️ Jira Bağlantı Ayarları{% endblock %}
+
+{% block topbar_actions %}
+    <a href="{{ url_for('jira_kurulum') }}" class="btn btn-secondary">
+        <span>📖</span> Kurulum Rehberi
+    </a>
+{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .settings-wrap { max-width: 680px; margin: 0 auto; }
+
+    .settings-card {
+        background: var(--white);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 32px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        position: relative;
+        overflow: hidden;
+    }
+    .settings-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #0052cc, #2684ff);
+        border-radius: 4px 4px 0 0;
+    }
+
+    .settings-header {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-bottom: 28px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid var(--border);
+    }
+    .jira-logo {
+        width: 48px; height: 48px;
+        background: #0052cc;
+        border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 24px;
+        flex-shrink: 0;
+    }
+    .settings-header h2 {
+        font-size: 18px; font-weight: 700;
+        color: var(--text-primary);
+        letter-spacing: -0.3px;
+    }
+    .settings-header p {
+        font-size: 13px;
+        color: var(--text-secondary);
+        margin-top: 2px;
+    }
+
+    .connection-status {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 14px;
+        border-radius: 10px;
+        font-size: 13px;
+        font-weight: 500;
+        margin-bottom: 24px;
+    }
+    .connection-status.connected {
+        background: var(--success-light);
+        color: #065f46;
+        border: 1px solid #6ee7b7;
+    }
+    .connection-status.disconnected {
+        background: #f3f4f6;
+        color: var(--text-secondary);
+        border: 1px solid var(--border);
+    }
+
+    .help-text {
+        font-size: 12px;
+        color: var(--text-secondary);
+        margin-top: 5px;
+    }
+    .help-text a {
+        color: var(--primary);
+        text-decoration: none;
+    }
+    .help-text a:hover { text-decoration: underline; }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 600px) { .form-row { grid-template-columns: 1fr; } }
+
+    .btn-jira {
+        background: #0052cc;
+        color: #fff;
+        border: none;
+        border-radius: 9px;
+        padding: 11px 24px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: background 0.2s, transform 0.15s;
+        box-shadow: 0 3px 10px rgba(0,82,204,0.3);
+    }
+    .btn-jira:hover { background: #0747a6; transform: translateY(-1px); }
+    .btn-jira:active { transform: translateY(0); }
+
+    .token-hint {
+        background: var(--bg-subtle);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 14px 16px;
+        margin-top: 24px;
+        font-size: 12.5px;
+        color: var(--text-secondary);
+        line-height: 1.7;
+    }
+    .token-hint strong { color: var(--text-primary); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="settings-wrap">
+    <div class="settings-card">
+        <div class="settings-header">
+            <div class="jira-logo">🎫</div>
+            <div>
+                <h2>Jira Bağlantı Ayarları</h2>
+                <p>Mevcut Jira alanınıza bağlanmak için gerekli bilgileri girin.</p>
+            </div>
+        </div>
+
+        {% if settings %}
+        <div class="connection-status connected">
+            ✅ Bağlantı yapılandırıldı — <strong>{{ settings['jira_url'] }}</strong> &nbsp;·&nbsp; Proje: <strong>{{ settings['project_key'] }}</strong>
+        </div>
+        {% else %}
+        <div class="connection-status disconnected">
+            ⚠️ Henüz Jira bağlantısı yapılandırılmamış.
+        </div>
+        {% endif %}
+
+        <form method="post">
+            <div class="form-group">
+                <label for="jira_url">Jira Alan URL'si *</label>
+                <input type="url" id="jira_url" name="jira_url" class="form-control"
+                       placeholder="https://sirketiniz.atlassian.net"
+                       value="{{ settings['jira_url'] if settings else '' }}" required>
+                <p class="help-text">Atlassian bulut için: <code>https://sirketiniz.atlassian.net</code></p>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="email">E-posta Adresi *</label>
+                    <input type="email" id="email" name="email" class="form-control"
+                           placeholder="kullanici@sirket.com"
+                           value="{{ settings['email'] if settings else '' }}" required>
+                    <p class="help-text">Jira hesabınıza ait e-posta</p>
+                </div>
+                <div class="form-group">
+                    <label for="project_key">Proje Anahtarı *</label>
+                    <input type="text" id="project_key" name="project_key" class="form-control"
+                           placeholder="SUP"
+                           value="{{ settings['project_key'] if settings else '' }}"
+                           style="text-transform:uppercase;" required>
+                    <p class="help-text">Örn: SUP, IT, HELP (Jira proje ayarlarından bulunur)</p>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="api_token">API Token *</label>
+                <input type="password" id="api_token" name="api_token" class="form-control"
+                       placeholder="{{ '••••••••••••••••••••' if settings else 'API tokenınızı buraya girin' }}"
+                       {% if not settings %}required{% endif %}>
+                <p class="help-text">
+                    <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank" rel="noopener">
+                        Atlassian hesabı → API tokenı oluştur
+                    </a>
+                    {% if settings %}&nbsp;— Boş bırakırsanız mevcut token korunur.{% endif %}
+                </p>
+            </div>
+
+            <div style="display:flex;gap:10px;align-items:center;margin-top:8px;">
+                <button type="submit" class="btn-jira">
+                    🔗 {% if settings %}Bağlantıyı Güncelle{% else %}Bağlan{% endif %}
+                </button>
+                {% if settings %}
+                <a href="{{ url_for('jira_kayitlar') }}" class="btn btn-secondary">
+                    🎫 Kayıtları Görüntüle
+                </a>
+                {% endif %}
+            </div>
+        </form>
+
+        <div class="token-hint">
+            <strong>💡 Nasıl API Token Alırım?</strong><br>
+            1. <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank" rel="noopener" style="color:var(--primary);">id.atlassian.com</a> adresine gidin<br>
+            2. <em>"Create API token"</em> butonuna tıklayın<br>
+            3. Bir isim verin (örn: "Destek Merkezi") ve <em>Create</em> deyin<br>
+            4. Oluşturulan tokeni kopyalayıp yukarıya yapıştırın.<br>
+            Daha fazla bilgi için <a href="{{ url_for('jira_kurulum') }}" style="color:var(--primary);">Kurulum Rehberi</a>'ni inceleyin.
+        </div>
+    </div>
+</div>
+{% endblock %}
