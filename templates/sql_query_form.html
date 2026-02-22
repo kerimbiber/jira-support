@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}{% if query %}SQL Sorgusunu Düzenle{% else %}Yeni SQL Sorgusu{% endif %} – Destek Merkezi{% endblock %}
+{% block page_title %}{% if query %}✏️ SQL Sorgusunu Düzenle{% else %}➕ Yeni SQL Sorgusu{% endif %}{% endblock %}
+
+{% block topbar_actions %}
+    <a href="{{ url_for('sql_queries_list') }}" class="btn btn-secondary">← SQL Sorgularına Dön</a>
+{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .form-card {
+        max-width: 900px;
+        background: var(--white);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 32px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    .sql-editor-wrapper {
+        position: relative;
+        border: 1px solid var(--border);
+        border-radius: 9px;
+        overflow: hidden;
+    }
+
+    .sql-editor-label {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: #1e1e2e;
+        padding: 8px 14px;
+        font-size: 12px;
+        color: #cdd6f4;
+        font-family: 'Consolas', 'Monaco', monospace;
+    }
+
+    textarea#sql_code {
+        width: 100%;
+        min-height: 280px;
+        padding: 14px;
+        background: #1e1e2e;
+        color: #cdd6f4;
+        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        font-size: 13.5px;
+        line-height: 1.6;
+        border: none;
+        outline: none;
+        resize: vertical;
+        tab-size: 4;
+    }
+
+    .form-actions {
+        display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px;
+        padding-top: 20px; border-top: 1px solid var(--border);
+    }
+
+    .field-hint {
+        font-size: 12px;
+        color: var(--text-secondary);
+        margin-top: 4px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-card">
+    <form method="post"
+          action="{% if query %}{{ url_for('sql_query_edit', query_id=query['id']) }}{% else %}{{ url_for('sql_query_new') }}{% endif %}">
+
+        <div class="form-group">
+            <label for="title">Başlık <span style="color:var(--error)">*</span></label>
+            <input type="text" id="title" name="title" class="form-control"
+                   placeholder="SQL sorgusunun başlığı…" value="{{ title }}" required maxlength="200">
+        </div>
+
+        <div class="form-group">
+            <label for="purpose">Ne İşe Yarar?</label>
+            <textarea id="purpose" name="purpose" class="form-control"
+                      placeholder="Bu SQL sorgusunun amacını açıklayın…"
+                      style="min-height:80px;">{{ purpose }}</textarea>
+            <p class="field-hint">Bu sorgunun ne için kullanıldığını kısaca açıklayın.</p>
+        </div>
+
+        <div class="form-group">
+            <label for="notes">Notlar</label>
+            <textarea id="notes" name="notes" class="form-control"
+                      placeholder="Dikkat edilmesi gerekenler, bağımlılıklar, örnek sonuçlar…"
+                      style="min-height:80px;">{{ notes }}</textarea>
+            <p class="field-hint">Sorgu ile ilgili ek bilgiler, uyarılar veya örnek kullanımlar.</p>
+        </div>
+
+        <div class="form-group">
+            <label for="sql_code">SQL Kodu <span style="color:var(--error)">*</span></label>
+            <div class="sql-editor-wrapper">
+                <div class="sql-editor-label">
+                    <span>SQL</span>
+                    <span>SQL Editörü</span>
+                </div>
+                <textarea id="sql_code" name="sql_code"
+                          placeholder="SELECT * FROM tablo WHERE koşul;"
+                          required spellcheck="false">{{ sql_code }}</textarea>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <a href="{% if query %}{{ url_for('sql_query_detail', query_id=query['id']) }}{% else %}{{ url_for('sql_queries_list') }}{% endif %}"
+               class="btn btn-secondary">İptal</a>
+            <button type="submit" class="btn btn-primary">
+                {% if query %}💾 Güncelle{% else %}➕ Oluştur{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Tab key inserts spaces in the SQL editor
+    document.getElementById('sql_code').addEventListener('keydown', function(e) {
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            const start = this.selectionStart;
+            const end = this.selectionEnd;
+            this.value = this.value.substring(0, start) + '    ' + this.value.substring(end);
+            this.selectionStart = this.selectionEnd = start + 4;
+        }
+    });
+</script>
+{% endblock %}

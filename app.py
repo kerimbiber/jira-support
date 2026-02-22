@@ -50,6 +50,17 @@ def init_db():
             updated_at TEXT NOT NULL
         )
     ''')
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS sql_queries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            purpose TEXT NOT NULL DEFAULT '',
+            notes TEXT NOT NULL DEFAULT '',
+            sql_code TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+    ''')
     conn.commit()
     conn.close()
 
@@ -437,6 +448,107 @@ def link_delete(link_id):
     conn.close()
     flash('Link silindi.', 'success')
     return redirect(url_for('links_list'))
+
+
+@app.route('/sql-queries')
+def sql_queries_list():
+    search = request.args.get('q', '').strip()
+
+    conn = get_db()
+    params = []
+    where = "WHERE 1=1"
+    if search:
+        where += " AND (title LIKE ? OR purpose LIKE ? OR notes LIKE ? OR sql_code LIKE ?)"
+        params += [f'%{search}%', f'%{search}%', f'%{search}%', f'%{search}%']
+
+    total = conn.execute(f"SELECT COUNT(*) FROM sql_queries {where}", params).fetchone()[0]
+    queries = conn.execute(
+        f"SELECT * FROM sql_queries {where} ORDER BY updated_at DESC",
+        params
+    ).fetchall()
+    conn.close()
+
+    return render_template('sql_queries.html', queries=queries, search=search, total=total)
+
+
+@app.route('/sql-queries/new', methods=['GET', 'POST'])
+def sql_query_new():
+    if request.method == 'POST':
+        title = request.form.get('title', '').strip()
+        purpose = request.form.get('purpose', '').strip()
+        notes = request.form.get('notes', '').strip()
+        sql_code = request.form.get('sql_code', '').strip()
+        if not title or not sql_code:
+            flash('Başlık ve SQL kodu zorunludur.', 'error')
+            return render_template('sql_query_form.html', query=None,
+                                   title=title, purpose=purpose, notes=notes, sql_code=sql_code)
+        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        conn = get_db()
+        conn.execute(
+            "INSERT INTO sql_queries (title, purpose, notes, sql_code, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+            (title, purpose, notes, sql_code, now, now)
+        )
+        conn.commit()
+        conn.close()
+        flash('SQL sorgusu başarıyla oluşturuldu.', 'success')
+        return redirect(url_for('sql_queries_list'))
+    return render_template('sql_query_form.html', query=None,
+                           title='', purpose='', notes='', sql_code='')
+
+
+@app.route('/sql-queries/<int:query_id>')
+def sql_query_detail(query_id):
+    conn = get_db()
+    query = conn.execute("SELECT * FROM sql_queries WHERE id = ?", (query_id,)).fetchone()
+    conn.close()
+    if query is None:
+        flash('SQL sorgusu bulunamadı.', 'error')
+        return redirect(url_for('sql_queries_list'))
+    return render_template('sql_query_detail.html', query=query)
+
+
+@app.route('/sql-queries/<int:query_id>/edit', methods=['GET', 'POST'])
+def sql_query_edit(query_id):
+    conn = get_db()
+    query = conn.execute("SELECT * FROM sql_queries WHERE id = ?", (query_id,)).fetchone()
+    conn.close()
+    if query is None:
+        flash('SQL sorgusu bulunamadı.', 'error')
+        return redirect(url_for('sql_queries_list'))
+
+    if request.method == 'POST':
+        title = request.form.get('title', '').strip()
+        purpose = request.form.get('purpose', '').strip()
+        notes = request.form.get('notes', '').strip()
+        sql_code = request.form.get('sql_code', '').strip()
+        if not title or not sql_code:
+            flash('Başlık ve SQL kodu zorunludur.', 'error')
+            return render_template('sql_query_form.html', query=query,
+                                   title=title, purpose=purpose, notes=notes, sql_code=sql_code)
+        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        conn = get_db()
+        conn.execute(
+            "UPDATE sql_queries SET title=?, purpose=?, notes=?, sql_code=?, updated_at=? WHERE id=?",
+            (title, purpose, notes, sql_code, now, query_id)
+        )
+        conn.commit()
+        conn.close()
+        flash('SQL sorgusu başarıyla güncellendi.', 'success')
+        return redirect(url_for('sql_query_detail', query_id=query_id))
+
+    return render_template('sql_query_form.html', query=query,
+                           title=query['title'], purpose=query['purpose'],
+                           notes=query['notes'], sql_code=query['sql_code'])
+
+
+@app.route('/sql-queries/<int:query_id>/delete', methods=['POST'])
+def sql_query_delete(query_id):
+    conn = get_db()
+    conn.execute("DELETE FROM sql_queries WHERE id = ?", (query_id,))
+    conn.commit()
+    conn.close()
+    flash('SQL sorgusu silindi.', 'success')
+    return redirect(url_for('sql_queries_list'))
 
 
 if __name__ == '__main__':
