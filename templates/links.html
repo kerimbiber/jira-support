@@ -1,0 +1,293 @@
+{% extends "base.html" %}
+
+{% block title %}Linkler – Destek Merkezi{% endblock %}
+{% block page_title %}🔗 Linkler{% endblock %}
+
+{% block topbar_actions %}
+    <a href="{{ url_for('link_new') }}" class="btn btn-primary">
+        <span>＋</span> Yeni Link
+    </a>
+{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .search-bar {
+        background: var(--white);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px 20px;
+        margin-bottom: 20px;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: flex-end;
+    }
+    .search-bar .form-group { margin-bottom: 0; flex: 1; min-width: 180px; }
+
+    .category-tabs {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-bottom: 20px;
+    }
+    .category-tab {
+        padding: 5px 14px;
+        border-radius: 99px;
+        font-size: 12.5px;
+        font-weight: 500;
+        text-decoration: none;
+        border: 1px solid var(--border);
+        color: var(--text-secondary);
+        background: var(--white);
+        transition: background 0.18s, color 0.18s, border-color 0.18s;
+    }
+    .category-tab:hover, .category-tab.active {
+        background: var(--primary-light);
+        color: var(--primary-dark);
+        border-color: var(--primary);
+    }
+    .category-tab.active { font-weight: 600; }
+
+    .results-info {
+        font-size: 13px;
+        color: var(--text-secondary);
+        margin-bottom: 14px;
+    }
+
+    .links-section { margin-bottom: 32px; }
+
+    .links-section-title {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.7px;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .links-section-title::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: var(--border);
+    }
+
+    .links-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 14px;
+    }
+
+    .link-card {
+        background: var(--white);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 18px 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        transition: box-shadow 0.2s, transform 0.18s, border-color 0.2s;
+        position: relative;
+        overflow: hidden;
+    }
+    .link-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, var(--primary), #a855f7);
+        border-radius: 3px 3px 0 0;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+    .link-card:hover {
+        box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+        transform: translateY(-2px);
+        border-color: var(--primary);
+    }
+    .link-card:hover::before { opacity: 1; }
+
+    .link-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .link-title {
+        font-size: 14.5px;
+        font-weight: 600;
+        color: var(--text-primary);
+        line-height: 1.4;
+        flex: 1;
+    }
+
+    .link-url {
+        font-size: 12.5px;
+        color: var(--primary-dark);
+        text-decoration: none;
+        word-break: break-all;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+    .link-url:hover { text-decoration: underline; }
+
+    .link-description {
+        font-size: 12.5px;
+        color: var(--text-secondary);
+        line-height: 1.5;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .link-card-actions {
+        display: flex;
+        gap: 6px;
+        margin-top: 4px;
+        padding-top: 10px;
+        border-top: 1px solid var(--border);
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 24px;
+        color: var(--text-secondary);
+    }
+    .empty-state .empty-icon { font-size: 52px; margin-bottom: 14px; }
+    .empty-state h3 { font-size: 17px; color: var(--text-primary); margin-bottom: 6px; }
+    .empty-state p { font-size: 13.5px; margin-bottom: 20px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Search & filter -->
+<form method="get" action="{{ url_for('links_list') }}" class="search-bar">
+    <div class="form-group">
+        <label for="q">Ara</label>
+        <input type="text" id="q" name="q" class="form-control"
+               placeholder="Başlık, URL veya açıklama…" value="{{ search }}">
+    </div>
+    <div class="form-group" style="min-width:160px;">
+        <label for="category">Kategori</label>
+        <select id="category" name="category" class="form-control">
+            <option value="">Tümü</option>
+            {% for cat in categories %}
+                <option value="{{ cat }}" {% if category == cat %}selected{% endif %}>{{ cat }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <button type="submit" class="btn btn-primary" style="height:38px;align-self:flex-end;">🔍 Ara</button>
+    {% if search or category %}
+        <a href="{{ url_for('links_list') }}" class="btn btn-secondary" style="height:38px;align-self:flex-end;">✕ Temizle</a>
+    {% endif %}
+</form>
+
+<!-- Quick category tabs -->
+<div class="category-tabs">
+    <a href="{{ url_for('links_list', q=search) }}"
+       class="category-tab {% if not category %}active{% endif %}">Tümü ({{ total }})</a>
+    {% for cat in categories %}
+        <a href="{{ url_for('links_list', category=cat, q=search) }}"
+           class="category-tab {% if category == cat %}active{% endif %}">{{ cat }}</a>
+    {% endfor %}
+</div>
+
+{% if links %}
+    <p class="results-info">
+        {% if search or category %}
+            "<strong>{% if search %}{{ search }}{% endif %}{% if category %} [{{ category }}]{% endif %}</strong>" için {{ total }} sonuç
+        {% else %}
+            Toplam {{ total }} link
+        {% endif %}
+    </p>
+
+    {% if category %}
+        <!-- Filtered: flat grid -->
+        <div class="links-grid">
+            {% for link in links %}
+            <div class="link-card">
+                <div class="link-card-header">
+                    <span class="link-title">{{ link['title'] }}</span>
+                    <span class="badge badge-primary">{{ link['category'] }}</span>
+                </div>
+                {% if link['description'] %}
+                    <p class="link-description">{{ link['description'] }}</p>
+                {% endif %}
+                <a href="{{ link['url'] }}" target="_blank" rel="noopener noreferrer" class="link-url">
+                    🌐 {{ link['url'] }}
+                </a>
+                <div class="link-card-actions">
+                    <a href="{{ link['url'] }}" target="_blank" rel="noopener noreferrer"
+                       class="btn btn-success btn-sm">↗ Aç</a>
+                    <a href="{{ url_for('link_edit', link_id=link['id']) }}"
+                       class="btn btn-secondary btn-sm">✏️ Düzenle</a>
+                    <form method="post" action="{{ url_for('link_delete', link_id=link['id']) }}"
+                          onsubmit="return confirm('Bu linki silmek istediğinizden emin misiniz?');"
+                          style="display:inline;">
+                        <button type="submit" class="btn btn-danger btn-sm">🗑️</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <!-- Grouped by category -->
+        {% set ns = namespace(current_cat=None) %}
+        {% for link in links %}
+            {% if link['category'] != ns.current_cat %}
+                {% if ns.current_cat is not none %}
+                    </div></div>
+                {% endif %}
+                {% set ns.current_cat = link['category'] %}
+                <div class="links-section">
+                <div class="links-section-title">{{ link['category'] }}</div>
+                <div class="links-grid">
+            {% endif %}
+            <div class="link-card">
+                <div class="link-card-header">
+                    <span class="link-title">{{ link['title'] }}</span>
+                </div>
+                {% if link['description'] %}
+                    <p class="link-description">{{ link['description'] }}</p>
+                {% endif %}
+                <a href="{{ link['url'] }}" target="_blank" rel="noopener noreferrer" class="link-url">
+                    🌐 {{ link['url'] }}
+                </a>
+                <div class="link-card-actions">
+                    <a href="{{ link['url'] }}" target="_blank" rel="noopener noreferrer"
+                       class="btn btn-success btn-sm">↗ Aç</a>
+                    <a href="{{ url_for('link_edit', link_id=link['id']) }}"
+                       class="btn btn-secondary btn-sm">✏️ Düzenle</a>
+                    <form method="post" action="{{ url_for('link_delete', link_id=link['id']) }}"
+                          onsubmit="return confirm('Bu linki silmek istediğinizden emin misiniz?');"
+                          style="display:inline;">
+                        <button type="submit" class="btn btn-danger btn-sm">🗑️</button>
+                    </form>
+                </div>
+            </div>
+        {% endfor %}
+        {% if ns.current_cat is not none %}
+            </div></div>
+        {% endif %}
+    {% endif %}
+
+{% else %}
+    <div class="empty-state">
+        <div class="empty-icon">🔗</div>
+        {% if search or category %}
+            <h3>Sonuç bulunamadı</h3>
+            <p>Arama kriterlerinize uyan link bulunamadı.</p>
+            <a href="{{ url_for('links_list') }}" class="btn btn-secondary">Tüm Linkleri Göster</a>
+        {% else %}
+            <h3>Henüz link yok</h3>
+            <p>Swagger, panel ve sık kullandığınız linkleri buraya ekleyebilirsiniz.</p>
+            <a href="{{ url_for('link_new') }}" class="btn btn-primary">＋ İlk Linki Ekle</a>
+        {% endif %}
+    </div>
+{% endif %}
+{% endblock %}
