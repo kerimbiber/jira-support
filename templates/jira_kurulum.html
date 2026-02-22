@@ -1,0 +1,520 @@
+{% extends "base.html" %}
+
+{% block title %}Jira Bağlantı Kurulum Rehberi – Destek Merkezi{% endblock %}
+{% block page_title %}📖 Jira Bağlantı Kurulum Rehberi{% endblock %}
+
+{% block topbar_actions %}
+    <a href="{{ url_for('jira_settings_view') }}" class="btn btn-primary">
+        <span>⚙️</span> Bağlantı Ayarları
+    </a>
+{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .doc-wrap { max-width: 860px; margin: 0 auto; }
+
+    .doc-toc {
+        background: var(--white);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 20px 24px;
+        margin-bottom: 28px;
+    }
+    .doc-toc h3 {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 12px;
+    }
+    .doc-toc ol {
+        padding-left: 20px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4px 20px;
+    }
+    .doc-toc li { font-size: 13px; }
+    .doc-toc a { color: var(--primary); text-decoration: none; }
+    .doc-toc a:hover { text-decoration: underline; }
+    @media (max-width: 600px) { .doc-toc ol { grid-template-columns: 1fr; } }
+
+    .doc-section {
+        background: var(--white);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 28px 32px;
+        margin-bottom: 20px;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    }
+    @media (max-width: 600px) { .doc-section { padding: 20px; } }
+
+    .doc-section h2 {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid var(--primary-light);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .doc-section h3 {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 20px 0 10px;
+    }
+
+    .doc-section p {
+        font-size: 14px;
+        color: var(--text-secondary);
+        line-height: 1.75;
+        margin-bottom: 12px;
+    }
+
+    .doc-section ul, .doc-section ol {
+        font-size: 14px;
+        color: var(--text-secondary);
+        line-height: 1.75;
+        padding-left: 22px;
+        margin-bottom: 12px;
+    }
+    .doc-section li { margin-bottom: 6px; }
+
+    .step-list { list-style: none; padding-left: 0; }
+    .step-list li {
+        display: flex;
+        gap: 14px;
+        margin-bottom: 14px;
+        align-items: flex-start;
+    }
+    .step-num {
+        width: 28px; height: 28px;
+        background: var(--primary);
+        color: #fff;
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 12px;
+        font-weight: 700;
+        flex-shrink: 0;
+        margin-top: 2px;
+    }
+    .step-content { flex: 1; }
+    .step-content strong {
+        display: block;
+        font-size: 14px;
+        color: var(--text-primary);
+        margin-bottom: 3px;
+    }
+    .step-content span {
+        font-size: 13px;
+        color: var(--text-secondary);
+        line-height: 1.6;
+    }
+
+    code {
+        background: #f3f4f6;
+        border: 1px solid var(--border);
+        border-radius: 5px;
+        padding: 2px 7px;
+        font-family: 'Courier New', monospace;
+        font-size: 12.5px;
+        color: #374151;
+    }
+
+    .code-block {
+        background: #1e1b4b;
+        color: #c7d2fe;
+        border-radius: 10px;
+        padding: 16px 20px;
+        font-family: 'Courier New', monospace;
+        font-size: 13px;
+        line-height: 1.6;
+        margin: 12px 0;
+        overflow-x: auto;
+    }
+
+    .tip-box {
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        border-radius: 10px;
+        padding: 14px 16px;
+        font-size: 13px;
+        color: #1e40af;
+        margin: 14px 0;
+        line-height: 1.65;
+    }
+    .tip-box::before { content: '💡 '; font-weight: 700; }
+
+    .warn-box {
+        background: var(--warning-light);
+        border: 1px solid #fcd34d;
+        border-radius: 10px;
+        padding: 14px 16px;
+        font-size: 13px;
+        color: #92400e;
+        margin: 14px 0;
+        line-height: 1.65;
+    }
+    .warn-box::before { content: '⚠️ '; font-weight: 700; }
+
+    .success-box {
+        background: var(--success-light);
+        border: 1px solid #6ee7b7;
+        border-radius: 10px;
+        padding: 14px 16px;
+        font-size: 13px;
+        color: #065f46;
+        margin: 14px 0;
+        line-height: 1.65;
+    }
+    .success-box::before { content: '✅ '; font-weight: 700; }
+
+    .table-doc {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13.5px;
+        margin: 14px 0;
+    }
+    .table-doc th {
+        background: var(--bg-subtle);
+        padding: 10px 14px;
+        text-align: left;
+        font-weight: 600;
+        border: 1px solid var(--border);
+        font-size: 12.5px;
+    }
+    .table-doc td {
+        padding: 10px 14px;
+        border: 1px solid var(--border);
+        color: var(--text-secondary);
+    }
+
+    .nav-buttons {
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+        margin-top: 8px;
+        flex-wrap: wrap;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="doc-wrap">
+
+    <!-- İçindekiler -->
+    <div class="doc-toc">
+        <h3>📋 İçindekiler</h3>
+        <ol>
+            <li><a href="#genel-bakis">Genel Bakış</a></li>
+            <li><a href="#jira-adimlar">Jira'da Yapılacaklar</a></li>
+            <li><a href="#api-token">API Token Oluşturma</a></li>
+            <li><a href="#proje-anahtari">Proje Anahtarını Bulma</a></li>
+            <li><a href="#site-adimlar">Sitemizde Yapılacaklar</a></li>
+            <li><a href="#baglanti-test">Bağlantıyı Test Etme</a></li>
+            <li><a href="#kayitlar">Kayıtlar Sayfası</a></li>
+            <li><a href="#sorun-giderme">Sorun Giderme</a></li>
+        </ol>
+    </div>
+
+    <!-- 1. Genel Bakış -->
+    <div class="doc-section" id="genel-bakis">
+        <h2>1️⃣ Genel Bakış</h2>
+        <p>
+            Bu özellik, Jira'daki mevcut projenize bağlanarak kayıtları (issue) doğrudan bu platformdan
+            görüntülemenize olanak tanır. Bağlantı, Atlassian'ın resmi <strong>REST API v3</strong>'ü
+            kullanılarak gerçekleştirilir.
+        </p>
+        <h3>Nasıl Çalışır?</h3>
+        <p>
+            Sistem, Jira hesabınız için oluşturulan <strong>API Token</strong> aracılığıyla güvenli bir
+            şekilde Jira'ya bağlanır. Bu token, yalnızca okuma işlemleri için gereklidir; hiçbir veri
+            değiştirilmez. Kimlik bilgileri, sadece bu sunucunun veritabanında saklanır ve üçüncü taraflarla
+            paylaşılmaz.
+        </p>
+        <div class="success-box">
+            Desteklenen Jira türü: <strong>Atlassian Cloud</strong> (Örn: <code>sirket.atlassian.net</code>).
+            Şirket içi (Server/Data Center) kurulumlar için URL formatı aynıdır ancak kendi sunucu adresinizi kullanırsınız.
+        </div>
+    </div>
+
+    <!-- 2. Jira'da Yapılacaklar -->
+    <div class="doc-section" id="jira-adimlar">
+        <h2>2️⃣ Jira'da Yapılacaklar</h2>
+        <p>Bağlantı kurmadan önce Jira tarafında iki bilgiye ihtiyacınız var:</p>
+        <ul>
+            <li>Atlassian hesabınıza ait <strong>API Token</strong></li>
+            <li>Bağlanmak istediğiniz Jira projesinin <strong>Proje Anahtarı</strong> (Project Key)</li>
+        </ul>
+        <div class="tip-box">
+            Bu işlemleri yapmak için Jira'ya erişim yetkiniz ve projeye üyeliğiniz olması gerekir.
+        </div>
+    </div>
+
+    <!-- 3. API Token Oluşturma -->
+    <div class="doc-section" id="api-token">
+        <h2>3️⃣ API Token Oluşturma (Jira'da)</h2>
+        <p>API Token, Jira hesabınıza şifrenizi paylaşmadan güvenli erişim sağlar.</p>
+
+        <ul class="step-list">
+            <li>
+                <div class="step-num">1</div>
+                <div class="step-content">
+                    <strong>Atlassian hesabınıza giriş yapın</strong>
+                    <span>
+                        Tarayıcınızda
+                        <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank" rel="noopener" style="color:var(--primary);">
+                            id.atlassian.com/manage-profile/security/api-tokens
+                        </a>
+                        adresine gidin. Gerekirse e-posta ve şifrenizle giriş yapın.
+                    </span>
+                </div>
+            </li>
+            <li>
+                <div class="step-num">2</div>
+                <div class="step-content">
+                    <strong>"Create API token" butonuna tıklayın</strong>
+                    <span>Sayfanın üst kısmındaki mavi butona tıklayın.</span>
+                </div>
+            </li>
+            <li>
+                <div class="step-num">3</div>
+                <div class="step-content">
+                    <strong>Tokene bir isim verin</strong>
+                    <span>
+                        Açılan dialog kutusuna bir isim yazın (örn: <code>Destek Merkezi</code>) ve
+                        <em>Create</em> butonuna tıklayın.
+                    </span>
+                </div>
+            </li>
+            <li>
+                <div class="step-num">4</div>
+                <div class="step-content">
+                    <strong>Tokeni kopyalayın</strong>
+                    <span>
+                        Oluşturulan token ekranda görüntülenecektir. <strong>Bu token bir daha gösterilmez</strong>,
+                        bu yüzden hemen kopyalayıp güvenli bir yere kaydedin.
+                    </span>
+                </div>
+            </li>
+        </ul>
+
+        <div class="warn-box">
+            API tokenı kimseyle paylaşmayın. Token, Jira hesabınıza tam erişim sağlar. İhtiyaç duymazsanız veya
+            tehlikeye girdiyse Atlassian hesabı sayfasından iptal edin.
+        </div>
+    </div>
+
+    <!-- 4. Proje Anahtarını Bulma -->
+    <div class="doc-section" id="proje-anahtari">
+        <h2>4️⃣ Proje Anahtarını Bulma</h2>
+        <p>
+            Her Jira projesinin benzersiz bir kısa kodu (Project Key) vardır.
+            Örneğin: <code>SUP</code>, <code>IT</code>, <code>HELP</code>, <code>DEV</code>.
+        </p>
+        <ul class="step-list">
+            <li>
+                <div class="step-num">1</div>
+                <div class="step-content">
+                    <strong>Jira'da projenize gidin</strong>
+                    <span>Sol menüden "Projects" seçin ve bağlanmak istediğiniz projeye tıklayın.</span>
+                </div>
+            </li>
+            <li>
+                <div class="step-num">2</div>
+                <div class="step-content">
+                    <strong>Proje Ayarları'nı açın</strong>
+                    <span>Sol alt köşede "Project settings" (Proje ayarları) bağlantısına tıklayın.</span>
+                </div>
+            </li>
+            <li>
+                <div class="step-num">3</div>
+                <div class="step-content">
+                    <strong>Key (Anahtar) alanını bulun</strong>
+                    <span>
+                        "Details" (Ayrıntılar) sekmesinde "Key" alanını göreceksiniz.
+                        Bu değer proje anahtarınızdır (örn: <code>SUP</code>).
+                        Ayrıca Jira URL'sinde kayıt numaralarından da anlaşılır: <code>SUP-123</code>.
+                    </span>
+                </div>
+            </li>
+        </ul>
+        <div class="tip-box">
+            Proje anahtarını bulmak için en hızlı yöntem: Herhangi bir Jira kaydının başlığına bakın.
+            <code>SUP-42</code> gibi görünüyorsa proje anahtarınız <code>SUP</code>'tur.
+        </div>
+    </div>
+
+    <!-- 5. Sitemizde Yapılacaklar -->
+    <div class="doc-section" id="site-adimlar">
+        <h2>5️⃣ Sitemizde Yapılacaklar</h2>
+        <p>
+            Jira'dan gerekli bilgileri aldıktan sonra <strong>Jira Ayarları</strong> sayfasını doldurun:
+        </p>
+
+        <table class="table-doc">
+            <thead>
+                <tr>
+                    <th>Alan</th>
+                    <th>Açıklama</th>
+                    <th>Örnek</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Jira Alan URL'si</strong></td>
+                    <td>Jira sitenizin tam adresi (sonda / olmadan)</td>
+                    <td><code>https://sirket.atlassian.net</code></td>
+                </tr>
+                <tr>
+                    <td><strong>E-posta Adresi</strong></td>
+                    <td>Atlassian hesabınızda kayıtlı e-posta</td>
+                    <td><code>ali@sirket.com</code></td>
+                </tr>
+                <tr>
+                    <td><strong>Proje Anahtarı</strong></td>
+                    <td>Jira proje kodu (büyük harf)</td>
+                    <td><code>SUP</code></td>
+                </tr>
+                <tr>
+                    <td><strong>API Token</strong></td>
+                    <td>Atlassian hesabından oluşturulan token</td>
+                    <td><code>ATATT3xFf...</code></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <ul class="step-list">
+            <li>
+                <div class="step-num">1</div>
+                <div class="step-content">
+                    <strong>Jira Ayarları sayfasını açın</strong>
+                    <span>Sol menüden "Jira Ayarları" seçeneğine tıklayın veya üst sağdaki butona basın.</span>
+                </div>
+            </li>
+            <li>
+                <div class="step-num">2</div>
+                <div class="step-content">
+                    <strong>Formu doldurun</strong>
+                    <span>Yukarıdaki tabloya göre tüm alanları eksiksiz doldurun.</span>
+                </div>
+            </li>
+            <li>
+                <div class="step-num">3</div>
+                <div class="step-content">
+                    <strong>"Bağlan" butonuna tıklayın</strong>
+                    <span>
+                        Sistem otomatik olarak Jira'ya bağlanıp kimlik doğrulamasını test eder.
+                        Başarılı ise "Kayıtlar" sayfasına yönlendirilirsiniz.
+                    </span>
+                </div>
+            </li>
+        </ul>
+    </div>
+
+    <!-- 6. Bağlantıyı Test Etme -->
+    <div class="doc-section" id="baglanti-test">
+        <h2>6️⃣ Bağlantıyı Test Etme</h2>
+        <p>
+            Form gönderildiğinde sistem otomatik olarak
+            <code>GET /rest/api/3/myself</code> endpoint'ini çağırarak kimlik doğrular.
+        </p>
+        <ul>
+            <li><strong>✅ Başarılı:</strong> "Jira bağlantısı başarıyla kaydedildi" mesajı görünür
+                ve Kayıtlar sayfasına yönlendirilirsiniz.</li>
+            <li><strong>❌ 401 Hatası:</strong> E-posta veya API Token hatalı. Kontrol edin.</li>
+            <li><strong>❌ Bağlantı Hatası:</strong> URL hatalı ya da Jira'ya erişilemiyor.</li>
+        </ul>
+        <div class="code-block">
+# Jira REST API test (terminal ile manuel test)
+curl -u "e-posta@sirket.com:API_TOKEN" \
+     -H "Accept: application/json" \
+     "https://sirket.atlassian.net/rest/api/3/myself"</div>
+        <div class="tip-box">
+            Bağlantı başarılıysa JSON formatında hesap bilgilerinizi dönen bir yanıt görürsünüz.
+        </div>
+    </div>
+
+    <!-- 7. Kayıtlar Sayfası -->
+    <div class="doc-section" id="kayitlar">
+        <h2>7️⃣ Kayıtlar Sayfası</h2>
+        <p>
+            Bağlantı kurulduktan sonra <strong>Kayıtlar</strong> sayfası şu bilgileri listeler:
+        </p>
+        <ul>
+            <li>🔑 <strong>Kayıt Anahtarı</strong> – Jira'daki kayda doğrudan link (örn: SUP-42)</li>
+            <li>📋 <strong>Başlık</strong> – Kayıt özeti ve tipi (Bug, Task, Story, Epic)</li>
+            <li>🔵 <strong>Durum</strong> – To Do / In Progress / Done</li>
+            <li>🟡 <strong>Öncelik</strong> – Highest, High, Medium, Low, Lowest</li>
+            <li>👤 <strong>Atanan</strong> – Göreve atanan kişi</li>
+            <li>📅 <strong>Güncelleme Tarihi</strong></li>
+        </ul>
+        <h3>Filtreleme ve Arama</h3>
+        <ul>
+            <li><strong>Metin Arama</strong> – Başlık veya içerikte arama yapabilirsiniz.</li>
+            <li><strong>Durum Filtresi</strong> – To Do, In Progress veya Done durumlarına göre filtreleyin.</li>
+            <li><strong>Sayfalama</strong> – Her sayfada 20 kayıt gösterilir.</li>
+        </ul>
+        <div class="tip-box">
+            Kayıt anahtarına (örn: <code>SUP-42</code>) tıkladığınızda Jira'daki kayda yeni sekmede
+            doğrudan ulaşabilirsiniz.
+        </div>
+    </div>
+
+    <!-- 8. Sorun Giderme -->
+    <div class="doc-section" id="sorun-giderme">
+        <h2>8️⃣ Sorun Giderme</h2>
+
+        <h3>401 Unauthorized (Yetkisiz Erişim)</h3>
+        <ul>
+            <li>E-posta adresi yanlış girilmiş olabilir. Atlassian hesabınızdaki e-postayla aynı olmalı.</li>
+            <li>API Token yanlış kopyalanmış olabilir. Yeni bir token oluşturun.</li>
+            <li>Token iptal edilmiş olabilir. Atlassian hesabından kontrol edin.</li>
+        </ul>
+
+        <h3>Bağlantı Hatası / Zaman Aşımı</h3>
+        <ul>
+            <li>URL formatını kontrol edin: <code>https://sirket.atlassian.net</code> (sonda <code>/</code> olmadan)</li>
+            <li>İnternet bağlantısını ve Jira'nın erişilebilir olduğunu doğrulayın.</li>
+            <li>Şirket güvenlik duvarı (firewall) Atlassian'ı engelliyor olabilir.</li>
+        </ul>
+
+        <h3>Kayıtlar Sayfası Boş Görünüyor</h3>
+        <ul>
+            <li>Proje Anahtarı'nın doğru girildiğini kontrol edin (büyük harf, boşluksuz).</li>
+            <li>Jira hesabınızın bu projeye üye olduğunu doğrulayın.</li>
+            <li>Proje gerçekten kayıt içeriyor mu? Jira'da kontrol edin.</li>
+        </ul>
+
+        <h3>API İzinleri</h3>
+        <p>
+            Bağlantı için gereken minimum izinler:
+        </p>
+        <table class="table-doc">
+            <thead>
+                <tr><th>İzin</th><th>Gereklilik</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Browse Projects (Projeleri Görüntüle)</td><td>✅ Gerekli</td></tr>
+                <tr><td>View Issues (Kayıtları Görüntüle)</td><td>✅ Gerekli</td></tr>
+                <tr><td>Edit / Create / Delete Issues</td><td>❌ Gerekli Değil</td></tr>
+            </tbody>
+        </table>
+        <div class="tip-box">
+            Kullanıcının projeye en az <strong>"Gözlemci" (Viewer)</strong> rolü atanmış olması yeterlidir.
+        </div>
+    </div>
+
+    <div class="nav-buttons">
+        <a href="{{ url_for('jira_settings_view') }}" class="btn btn-primary">
+            ⚙️ Jira Bağlantısını Yapılandır
+        </a>
+        <a href="{{ url_for('jira_kayitlar') }}" class="btn btn-secondary">
+            🎫 Kayıtlara Git
+        </a>
+    </div>
+
+</div>
+{% endblock %}

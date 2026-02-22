@@ -1,0 +1,325 @@
+{% extends "base.html" %}
+
+{% block title %}Jira Kayıtlar – Destek Merkezi{% endblock %}
+{% block page_title %}🎫 Jira Kayıtları{% endblock %}
+
+{% block topbar_actions %}
+    <a href="{{ url_for('jira_settings_view') }}" class="btn btn-secondary">
+        <span>⚙️</span> Bağlantı Ayarları
+    </a>
+{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .filter-bar {
+        background: var(--white);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px 20px;
+        margin-bottom: 20px;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: flex-end;
+    }
+    .filter-bar .form-group { margin-bottom: 0; flex: 1; min-width: 180px; }
+
+    .project-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #e8f0fe;
+        color: #1a56db;
+        padding: 4px 12px;
+        border-radius: 99px;
+        font-size: 12px;
+        font-weight: 600;
+        margin-bottom: 16px;
+    }
+
+    .issues-table-wrap {
+        background: var(--white);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    }
+
+    .issues-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13.5px;
+    }
+    .issues-table thead th {
+        background: var(--bg-subtle);
+        padding: 11px 14px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 12px;
+        color: var(--text-secondary);
+        border-bottom: 1px solid var(--border);
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+    }
+    .issues-table tbody tr {
+        border-bottom: 1px solid var(--border);
+        transition: background 0.15s;
+    }
+    .issues-table tbody tr:last-child { border-bottom: none; }
+    .issues-table tbody tr:hover { background: var(--bg-subtle); }
+    .issues-table td {
+        padding: 12px 14px;
+        vertical-align: middle;
+    }
+
+    .issue-key {
+        font-family: 'Courier New', monospace;
+        font-size: 12px;
+        font-weight: 700;
+        color: #0052cc;
+        white-space: nowrap;
+        text-decoration: none;
+    }
+    .issue-key:hover { text-decoration: underline; }
+
+    .issue-summary {
+        font-weight: 500;
+        color: var(--text-primary);
+        max-width: 360px;
+    }
+
+    .issue-type-icon { font-size: 15px; }
+
+    .status-badge {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 99px;
+        font-size: 11px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    .status-todo     { background: #f3f4f6; color: #374151; }
+    .status-progress { background: #dbeafe; color: #1d4ed8; }
+    .status-done     { background: #d1fae5; color: #065f46; }
+    .status-other    { background: #fef3c7; color: #92400e; }
+
+    .priority-icon { font-size: 14px; }
+
+    .assignee-text {
+        font-size: 12.5px;
+        color: var(--text-secondary);
+        white-space: nowrap;
+    }
+
+    .date-text {
+        font-size: 12px;
+        color: var(--text-secondary);
+        white-space: nowrap;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 24px;
+        color: var(--text-secondary);
+    }
+    .empty-state .empty-icon { font-size: 52px; margin-bottom: 14px; }
+    .empty-state h3 { font-size: 17px; color: var(--text-primary); margin-bottom: 6px; }
+    .empty-state p { font-size: 13.5px; margin-bottom: 20px; }
+
+    .results-info {
+        font-size: 13px;
+        color: var(--text-secondary);
+        margin-bottom: 14px;
+    }
+
+    .error-card {
+        background: var(--error-light);
+        border: 1px solid #fca5a5;
+        border-radius: 12px;
+        padding: 20px 24px;
+        color: #b91c1c;
+        font-size: 13.5px;
+    }
+    .error-card strong { display: block; margin-bottom: 6px; font-size: 15px; }
+
+    @media (max-width: 768px) {
+        .col-priority, .col-reporter, .col-updated { display: none; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="project-badge">
+    🏢 {{ settings['jira_url'] }} &nbsp;·&nbsp; Proje: <strong>{{ settings['project_key'] }}</strong>
+</div>
+
+<!-- Filtre çubuğu -->
+<form method="get" class="filter-bar">
+    <div class="form-group">
+        <label for="q">Ara</label>
+        <input type="text" id="q" name="q" class="form-control"
+               placeholder="Başlık veya içerik…" value="{{ search }}">
+    </div>
+    <div class="form-group" style="min-width:160px; max-width:220px;">
+        <label for="status">Durum</label>
+        <select id="status" name="status" class="form-control">
+            <option value="">Tüm Durumlar</option>
+            <option value="To Do" {% if status_filter == 'To Do' %}selected{% endif %}>To Do</option>
+            <option value="In Progress" {% if status_filter == 'In Progress' %}selected{% endif %}>In Progress</option>
+            <option value="Done" {% if status_filter == 'Done' %}selected{% endif %}>Done</option>
+        </select>
+    </div>
+    <button type="submit" class="btn btn-primary" style="height:38px;align-self:flex-end;">🔍 Ara</button>
+    {% if search or status_filter %}
+        <a href="{{ url_for('jira_kayitlar') }}" class="btn btn-secondary" style="height:38px;align-self:flex-end;">✕ Temizle</a>
+    {% endif %}
+</form>
+
+{% if error %}
+<div class="error-card">
+    <strong>⚠️ Bağlantı Hatası</strong>
+    {{ error }}<br><br>
+    <a href="{{ url_for('jira_settings_view') }}" class="btn btn-danger btn-sm">⚙️ Ayarları Kontrol Et</a>
+</div>
+
+{% elif issues %}
+
+<p class="results-info">
+    {% if search or status_filter %}
+        Filtre sonucu: <strong>{{ total }}</strong> kayıt
+    {% else %}
+        Toplam <strong>{{ total }}</strong> kayıt
+    {% endif %}
+    &nbsp;·&nbsp; Sayfa {{ page }} / {{ total_pages }}
+</p>
+
+<div class="issues-table-wrap">
+    <table class="issues-table">
+        <thead>
+            <tr>
+                <th style="width:100px;">Anahtar</th>
+                <th>Başlık</th>
+                <th style="width:120px;">Durum</th>
+                <th class="col-priority" style="width:80px;">Öncelik</th>
+                <th style="width:130px;">Atanan</th>
+                <th class="col-reporter" style="width:130px;">Raporlayan</th>
+                <th class="col-updated" style="width:100px;">Güncelleme</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for issue in issues %}
+        {% set fields = issue.get('fields', {}) %}
+        {% set status_name = fields.get('status', {}).get('name', '') %}
+        {% set status_cat = fields.get('status', {}).get('statusCategory', {}).get('key', '') %}
+        <tr>
+            <td>
+                <a href="{{ settings['jira_url'] }}/browse/{{ issue['key'] }}"
+                   class="issue-key" target="_blank" rel="noopener">
+                    {{ issue['key'] }}
+                </a>
+            </td>
+            <td class="issue-summary">
+                {% set itype = fields.get('issuetype', {}).get('name', '') %}
+                <span class="issue-type-icon">
+                    {% if itype == 'Bug' %}🐛
+                    {% elif itype == 'Story' %}📖
+                    {% elif itype == 'Epic' %}⚡
+                    {% elif itype == 'Task' %}✅
+                    {% else %}🎫{% endif %}
+                </span>
+                {{ fields.get('summary', '—') }}
+            </td>
+            <td>
+                <span class="status-badge
+                    {% if status_cat == 'new' %}status-todo
+                    {% elif status_cat == 'indeterminate' %}status-progress
+                    {% elif status_cat == 'done' %}status-done
+                    {% else %}status-other{% endif %}">
+                    {{ status_name }}
+                </span>
+            </td>
+            <td class="col-priority">
+                {% set pname = fields.get('priority', {}).get('name', '') %}
+                <span class="priority-icon">
+                    {% if pname == 'Highest' or pname == 'Critical' %}🔴
+                    {% elif pname == 'High' %}🟠
+                    {% elif pname == 'Medium' %}🟡
+                    {% elif pname == 'Low' %}🔵
+                    {% elif pname == 'Lowest' %}⚪
+                    {% else %}⚫{% endif %}
+                </span>
+                <span style="font-size:12px;color:var(--text-secondary);">{{ pname }}</span>
+            </td>
+            <td>
+                {% set assignee = fields.get('assignee') %}
+                <span class="assignee-text">
+                    {% if assignee %}{{ assignee.get('displayName', '—') }}{% else %}—{% endif %}
+                </span>
+            </td>
+            <td class="col-reporter">
+                {% set reporter = fields.get('reporter') %}
+                <span class="assignee-text">
+                    {% if reporter %}{{ reporter.get('displayName', '—') }}{% else %}—{% endif %}
+                </span>
+            </td>
+            <td>
+                {% set updated = fields.get('updated', '') %}
+                <span class="date-text">
+                    {% if updated %}{{ updated[:10] }}{% else %}—{% endif %}
+                </span>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Sayfalama -->
+{% if total_pages > 1 %}
+<div class="flex items-center justify-between flex-wrap gap-2 mt-3">
+    <nav class="pagination" aria-label="Sayfalama">
+        <a href="{{ url_for('jira_kayitlar', page=page-1, q=search, status=status_filter) }}"
+           class="page-link page-link-wide {% if page <= 1 %}disabled{% endif %}">← Önceki</a>
+
+        {% set start = [1, page - 2] | max %}
+        {% set end   = [total_pages, page + 2] | min %}
+
+        {% if start > 1 %}
+            <a href="{{ url_for('jira_kayitlar', page=1, q=search, status=status_filter) }}" class="page-link">1</a>
+            {% if start > 2 %}<span class="page-link disabled">…</span>{% endif %}
+        {% endif %}
+
+        {% for p in range(start, end + 1) %}
+            <a href="{{ url_for('jira_kayitlar', page=p, q=search, status=status_filter) }}"
+               class="page-link {% if p == page %}active{% endif %}">{{ p }}</a>
+        {% endfor %}
+
+        {% if end < total_pages %}
+            {% if end < total_pages - 1 %}<span class="page-link disabled">…</span>{% endif %}
+            <a href="{{ url_for('jira_kayitlar', page=total_pages, q=search, status=status_filter) }}" class="page-link">{{ total_pages }}</a>
+        {% endif %}
+
+        <a href="{{ url_for('jira_kayitlar', page=page+1, q=search, status=status_filter) }}"
+           class="page-link page-link-wide {% if page >= total_pages %}disabled{% endif %}">Sonraki →</a>
+    </nav>
+    <span class="text-muted">{{ page }} / {{ total_pages }}</span>
+</div>
+{% endif %}
+
+{% else %}
+<div class="empty-state">
+    <div class="empty-icon">📭</div>
+    {% if search or status_filter %}
+        <h3>Sonuç bulunamadı</h3>
+        <p>Arama kriterlerinize uyan Jira kaydı bulunamadı.</p>
+        <a href="{{ url_for('jira_kayitlar') }}" class="btn btn-secondary">Tüm Kayıtları Göster</a>
+    {% else %}
+        <h3>Bu projede kayıt bulunamadı</h3>
+        <p>Jira projenizde (<strong>{{ settings['project_key'] }}</strong>) henüz kayıt yok ya da erişim izniniz bulunmuyor.</p>
+        <a href="{{ url_for('jira_settings_view') }}" class="btn btn-secondary">⚙️ Ayarları Kontrol Et</a>
+    {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}

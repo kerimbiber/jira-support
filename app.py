@@ -7,6 +7,8 @@ from datetime import datetime
 from pathlib import Path
 from werkzeug.utils import secure_filename
 import io
+import base64
+import requests as http_requests
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
@@ -57,6 +59,17 @@ def init_db():
             purpose TEXT NOT NULL DEFAULT '',
             notes TEXT NOT NULL DEFAULT '',
             sql_code TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+    ''')
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS jira_settings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            jira_url TEXT NOT NULL,
+            email TEXT NOT NULL,
+            api_token TEXT NOT NULL,
+            project_key TEXT NOT NULL,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         )
@@ -549,6 +562,138 @@ def sql_query_delete(query_id):
     conn.close()
     flash('SQL sorgusu silindi.', 'success')
     return redirect(url_for('sql_queries_list'))
+
+
+def get_jira_settings():
+    conn = get_db()
+    settings = conn.execute("SELECT * FROM jira_settings LIMIT 1").fetchone()
+    conn.close()
+    return settings
+
+
+def jira_auth_header(settings):
+    token = base64.b64encode(f"{settings['email']}:{settings['api_token']}".encode()).decode()
+    return {'Authorization': f'Basic {token}', 'Accept': 'application/json'}
+
+
+@app.route('/jira/ayarlar', methods=['GET', 'POST'])
+def jira_settings_view():
+    settings = get_jira_settings()
+
+    if request.method == 'POST':
+        jira_url = request.form.get('jira_url', '').strip().rstrip('/')
+        email = request.form.get('email', '').strip()
+        api_token = request.form.get('api_token', '').strip()
+        project_key = request.form.get('project_key', '').strip().upper()
+
+        # When updating, an empty api_token means keep the existing one
+        if settings and not api_token:
+            api_token = settings['api_token']
+
+        if not all([jira_url, email, api_token, project_key]):
+            flash('Tüm alanlar zorunludur.', 'error')
+            return render_template('jira_settings.html', settings=settings)
+
+        # Test connection using the helper
+        try:
+            test_headers = jira_auth_header({'email': email, 'api_token': api_token})
+            resp = http_requests.get(
+                f"{jira_url}/rest/api/3/myself",
+                headers=test_headers,
+                timeout=10
+            )
+            if resp.status_code == 401:
+                flash('Kimlik doğrulama hatası. E-posta veya API token hatalı.', 'error')
+                return render_template('jira_settings.html', settings=settings)
+            if resp.status_code != 200:
+                flash(f'Jira bağlantısı başarısız (HTTP {resp.status_code}). URL\'yi kontrol edin.', 'error')
+                return render_template('jira_settings.html', settings=settings)
+        except http_requests.RequestException as e:
+            flash(f'Bağlantı hatası: {str(e)}', 'error')
+            return render_template('jira_settings.html', settings=settings)
+
+        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        conn = get_db()
+        if settings:
+            conn.execute(
+                "UPDATE jira_settings SET jira_url=?, email=?, api_token=?, project_key=?, updated_at=? WHERE id=?",
+                (jira_url, email, api_token, project_key, now, settings['id'])
+            )
+        else:
+            conn.execute(
+                "INSERT INTO jira_settings (jira_url, email, api_token, project_key, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+                (jira_url, email, api_token, project_key, now, now)
+            )
+        conn.commit()
+        conn.close()
+        flash('Jira bağlantısı başarıyla kaydedildi.', 'success')
+        return redirect(url_for('jira_kayitlar'))
+
+    return render_template('jira_settings.html', settings=settings)
+
+
+@app.route('/jira/kayitlar')
+def jira_kayitlar():
+    settings = get_jira_settings()
+    if not settings:
+        flash('Önce Jira bağlantısını yapılandırın.', 'warning')
+        return redirect(url_for('jira_settings_view'))
+
+    search = request.args.get('q', '').strip()
+    status_filter = request.args.get('status', '').strip()
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+
+    jql = f"project = \"{settings['project_key']}\""
+    if search:
+        jql += f" AND text ~ \"{search}\""
+    if status_filter:
+        jql += f" AND status = \"{status_filter}\""
+    jql += " ORDER BY updated DESC"
+
+    issues = []
+    total = 0
+    total_pages = 1
+    error = None
+
+    try:
+        resp = http_requests.get(
+            f"{settings['jira_url']}/rest/api/3/search",
+            headers=jira_auth_header(settings),
+            params={
+                'jql': jql,
+                'maxResults': per_page,
+                'startAt': (page - 1) * per_page,
+                'fields': 'summary,status,priority,assignee,reporter,created,updated,issuetype'
+            },
+            timeout=15
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            issues = data.get('issues', [])
+            total = data.get('total', 0)
+            total_pages = max(1, (total + per_page - 1) // per_page)
+        else:
+            error = f'Jira API hatası (HTTP {resp.status_code}): {resp.text[:200]}'
+    except http_requests.RequestException as e:
+        error = f'Bağlantı hatası: {str(e)}'
+
+    return render_template(
+        'jira_kayitlar.html',
+        settings=settings,
+        issues=issues,
+        total=total,
+        page=page,
+        total_pages=total_pages,
+        search=search,
+        status_filter=status_filter,
+        error=error,
+    )
+
+
+@app.route('/jira/kurulum-rehberi')
+def jira_kurulum():
+    return render_template('jira_kurulum.html')
 
 
 if __name__ == '__main__':

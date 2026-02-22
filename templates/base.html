@@ -359,6 +359,16 @@
             <a href="{{ url_for('index') }}" class="nav-link {% if request.endpoint == 'index' %}active{% endif %}">
                 <span class="nav-icon">📊</span> Jira Performans
             </a>
+            <span class="nav-section-label">Jira Bağlantısı</span>
+            <a href="{{ url_for('jira_kayitlar') }}" class="nav-link {% if request.endpoint in ['jira_kayitlar'] %}active{% endif %}">
+                <span class="nav-icon">🎫</span> Kayıtlar
+            </a>
+            <a href="{{ url_for('jira_settings_view') }}" class="nav-link {% if request.endpoint == 'jira_settings_view' %}active{% endif %}">
+                <span class="nav-icon">⚙️</span> Jira Ayarları
+            </a>
+            <a href="{{ url_for('jira_kurulum') }}" class="nav-link {% if request.endpoint == 'jira_kurulum' %}active{% endif %}">
+                <span class="nav-icon">📖</span> Kurulum Rehberi
+            </a>
             <span class="nav-section-label">Bilgi Tabanı</span>
             <a href="{{ url_for('notes_list') }}" class="nav-link {% if request.endpoint in ['notes_list','note_detail','note_new','note_edit'] %}active{% endif %}">
                 <span class="nav-icon">📝</span> Notlar &amp; Dökümanlar
